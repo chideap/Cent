@@ -30,23 +30,10 @@ export default function BookGuide() {
         useBookStore.getState().switchToBook(bookId);
     };
     const toInvite = (book: Book) => {
-        // const ok = confirm(t("invite-tip"));
-        // if (!ok) {
-        //     return;
-        // }
-        // window.open(
-        //     `https://github.com/${book.repo}/settings/access`,
-        //     "_blank",
-        // );
         StorageAPI.inviteForBook?.(book.id);
     };
 
     const toDelete = async (book: Book) => {
-        // const ok = confirm(t("delete-book-tip"));
-        // if (!ok) {
-        //     return;
-        // }
-        // window.open(`https://github.com/${book.repo}/settings`, "_blank");
         try {
             await StorageAPI.deleteBook(book.id);
             useBookStore.getState().switchToBook(undefined);
@@ -65,7 +52,7 @@ export default function BookGuide() {
             }}
         >
             <Dialog.Portal>
-                <Dialog.Overlay className="fixed inset-0 bg-black/50 data-[state=open]:animate-overlay-show"></Dialog.Overlay>
+                <Dialog.Overlay className="fixed z-[2] inset-0 bg-black/50 data-[state=open]:animate-overlay-show"></Dialog.Overlay>
                 <Dialog.Content>
                     <VisuallyHidden.Root>
                         <Dialog.Title>{t("select-a-book")}</Dialog.Title>
@@ -73,7 +60,7 @@ export default function BookGuide() {
                             {t("select-a-book")}
                         </Dialog.Description>
                     </VisuallyHidden.Root>
-                    <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center pointer-events-none">
+                    <div className="fixed z-[3] top-0 left-0 w-full h-full flex justify-center items-center pointer-events-none">
                         <Dialog.Content
                             className={cn(
                                 "bg-background max-h-[55vh] w-fit max-w-[500px] rounded-md data-[state=open]:animate-content-show",
@@ -88,7 +75,7 @@ export default function BookGuide() {
                                 </Dialog.Description>
                             </VisuallyHidden.Root>
                             <div className="w-fit h-full flex justify-center items-center pointer-events-auto">
-                                <div className="bg-background w-[350px] h-[450px] py-4 flex flex-col justify-center items-center rounded">
+                                <div className="bg-background w-[350px] h-[480px] py-4 flex flex-col justify-center items-center rounded">
                                     {books.length > 0 ? (
                                         <div className="flex-1 flex flex-col w-full gap-2 h-full overflow-hidden">
                                             <div className="flex gap-2 px-4">

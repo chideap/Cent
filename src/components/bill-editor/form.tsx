@@ -1,7 +1,9 @@
 import { Switch } from "radix-ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DefaultCurrencies } from "@/api/currency/currencies";
 import useCategory from "@/hooks/use-category";
+import { useCurrency } from "@/hooks/use-currency";
 import { useTag } from "@/hooks/use-tag";
 import PopupLayout from "@/layouts/popup-layout";
 import { amountToNumber, numberToAmount } from "@/ledger/bill";
@@ -22,6 +24,13 @@ import IOSUnscrolledInput from "../input";
 import Calculator from "../keyboard";
 import CurrentLocation from "../simple-location";
 import Tag from "../tag";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
 import { goAddBill } from ".";
 
 const defaultBill = {
@@ -45,10 +54,18 @@ export default function EditorForm({
         onCancel?.();
     };
 
-    const [billState, setBillState] = useState({
-        ...defaultBill,
-        time: Date.now(),
-        ...edit,
+    const { baseCurrency, convert } = useCurrency();
+
+    const [billState, setBillState] = useState(() => {
+        const init = {
+            ...defaultBill,
+            time: Date.now(),
+            ...edit,
+        };
+        if (edit?.currency?.target === baseCurrency.id) {
+            delete init.currency;
+        }
+        return init;
     });
 
     // useEffect(() => {
@@ -72,11 +89,11 @@ export default function EditorForm({
         return categories.find((c) => c.id === selected?.parent)?.children;
     }, [billState.categoryId, categories]);
 
-    const toConfirm = () => {
+    const toConfirm = useCallback(() => {
         onConfirm?.({
             ...billState,
         });
-    };
+    }, [onConfirm, billState]);
 
     const chooseImage = async () => {
         const [file] = await showFilePicker({ accept: FORMAT_IMAGE_SUPPORTED });
@@ -103,14 +120,57 @@ export default function EditorForm({
         monitorRef.current?.focus?.();
     }, []);
 
+    useEffect(() => {
+        if (monitorFocused) {
+            const onPress = (event: KeyboardEvent) => {
+                const key = event.key;
+                if (key === "Enter") {
+                    toConfirm();
+                }
+            };
+            document.addEventListener("keypress", onPress);
+            return () => {
+                document.removeEventListener("keypress", onPress);
+            };
+        }
+    }, [monitorFocused, toConfirm]);
+
+    const targetCurrency = DefaultCurrencies.find(
+        (c) => c.id === (billState.currency?.target ?? baseCurrency.id),
+    )!;
+
+    const calculatorInitialValue = billState?.currency
+        ? amountToNumber(billState.currency.amount)
+        : billState?.amount
+          ? amountToNumber(billState?.amount)
+          : 0;
+
     return (
         <Calculator.Root
-            initialValue={edit?.amount ? amountToNumber(edit?.amount) : 0}
+            initialValue={calculatorInitialValue}
             onValueChange={(n) => {
-                setBillState((v) => ({
-                    ...v,
-                    amount: numberToAmount(n),
-                }));
+                setBillState((v) => {
+                    if (v.currency) {
+                        const { predict } = convert(
+                            n,
+                            v.currency.target,
+                            v.currency.base,
+                            v.time,
+                        );
+                        return {
+                            ...v,
+                            amount: numberToAmount(predict),
+                            currency: {
+                                ...v.currency,
+                                amount: numberToAmount(n),
+                            },
+                        };
+                    }
+                    return {
+                        ...v,
+                        amount: numberToAmount(n),
+                    };
+                });
             }}
             input={monitorFocused}
         >
@@ -146,29 +206,93 @@ export default function EditorForm({
                                 </Switch.Thumb>
                             </Switch.Root>
                         </div>
-                        <button
-                            ref={monitorRef}
-                            type="button"
-                            onFocus={() => {
-                                setMonitorFocused(true);
-                            }}
-                            onBlur={() => {
-                                setMonitorFocused(false);
-                            }}
-                            className="flex-1 flex flex-col justify-center items-end bg-stone-400 focus:outline rounded-lg ml-2 px-2 overflow-x-scroll"
-                        >
-                            <Calculator.Value className="text-white text-3xl font-semibold text-right bg-transparent"></Calculator.Value>
-                            {billState.amount < 0 && (
-                                <div className="absolute text-red-700 text-[8px] bottom-0 translate-y-[calc(-50%-2px)]">
-                                    {t("bill-negative-tip")}
+                        <div className="flex-1 flex bg-stone-400 focus:outline rounded-lg ml-2 px-2 relative">
+                            <Select
+                                value={targetCurrency.id}
+                                onValueChange={(newCurrencyId) => {
+                                    setBillState((prev) => {
+                                        if (newCurrencyId === baseCurrency.id) {
+                                            return {
+                                                ...prev,
+                                                amount:
+                                                    prev.currency?.amount ??
+                                                    prev.amount,
+                                                currency: undefined,
+                                            };
+                                        }
+                                        const { predict } = convert(
+                                            amountToNumber(
+                                                prev.currency?.amount ??
+                                                    prev.amount,
+                                            ),
+                                            newCurrencyId,
+                                            baseCurrency.id,
+                                            prev.time,
+                                        );
+                                        return {
+                                            ...prev,
+                                            amount: numberToAmount(predict),
+                                            currency: {
+                                                base: baseCurrency.id,
+                                                target: newCurrencyId,
+                                                amount:
+                                                    prev.currency?.amount ??
+                                                    prev.amount,
+                                            },
+                                        };
+                                    });
+                                }}
+                            >
+                                <div className="flex items-center">
+                                    <SelectTrigger className="w-fit outline-none ring-none border-none shadow-none p-0 [&_svg]:hidden">
+                                        <div className="flex items-center text-2xl text-white">
+                                            {targetCurrency?.symbol}
+                                        </div>
+                                    </SelectTrigger>
                                 </div>
-                            )}
-                        </button>
+                                <SelectContent>
+                                    {DefaultCurrencies.map((currency) => (
+                                        <SelectItem
+                                            key={currency.id}
+                                            value={currency.id}
+                                        >
+                                            {t(currency.labelKey)}
+                                            {`(${currency.symbol})`}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <button
+                                ref={monitorRef}
+                                type="button"
+                                onFocus={() => {
+                                    setMonitorFocused(true);
+                                }}
+                                onBlur={() => {
+                                    setMonitorFocused(false);
+                                }}
+                                className="flex-1 flex flex-col justify-center items-end overflow-x-scroll"
+                            >
+                                {billState.currency && (
+                                    <div className="absolute text-white text-[8px] top-0">
+                                        ≈ {baseCurrency.symbol}{" "}
+                                        {amountToNumber(billState.amount)}{" "}
+                                        {t(baseCurrency.labelKey)}
+                                    </div>
+                                )}
+                                <Calculator.Value className="text-white text-3xl font-semibold text-right bg-transparent"></Calculator.Value>
+                                {billState.amount < 0 && (
+                                    <div className="absolute text-red-700 text-[8px] bottom-0">
+                                        {t("bill-negative-tip")}
+                                    </div>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 }
             >
                 {/* categories */}
-                <div className="flex-1 flex-shrink-0 overflow-y-auto min-h-20 scrollbar-hidden flex flex-col px-2 text-sm font-medium gap-2">
+                <div className="flex-1 flex-shrink-0 overflow-y-auto min-h-[80px] scrollbar-hidden flex flex-col px-2 text-sm font-medium gap-2">
                     <div className="flex flex-col min-h-[80px] grow-[2] shrink overflow-y-auto scrollbar-hidden w-full">
                         <div
                             className={cn(
@@ -284,7 +408,7 @@ export default function EditorForm({
                 </div>
 
                 {/* keyboard area */}
-                <div className="keyboard-field h-[480px] sm:h-[380px] flex-shrink-0 flex gap-2 flex-col justify-start bg-stone-900 sm:rounded-b-md text-[white] p-2 pb-[max(env(safe-area-inset-bottom),8px)]">
+                <div className="keyboard-field min-h-[max(min(calc(100%-264px),480px),362px)] max-h-[calc(100%-264px)] sm:min-h-[max(min(calc(100%-264px),380px),362px)] flex gap-2 flex-col justify-start bg-stone-900 sm:rounded-b-md text-[white] p-2 pb-[max(env(safe-area-inset-bottom),8px)]">
                     <div className="flex justify-between items-center">
                         <div className="flex gap-2 items-center h-10">
                             <div className="flex items-center h-full">
@@ -315,7 +439,7 @@ export default function EditorForm({
                                 {(billState.images?.length ?? 0) < 3 && (
                                     <button
                                         type="button"
-                                        className="px-1 flex justify-center items-center rounded-full transition-all hover:(bg-stone-700) active:(bg-stone-500) cursor-pointer"
+                                        className="px-1 flex justify-center items-center rounded-full transition-all cursor-pointer"
                                         onClick={chooseImage}
                                     >
                                         <i className="icon-xs icon-[mdi--image-plus-outline] text-[white]"></i>
@@ -354,10 +478,36 @@ export default function EditorForm({
                                 <DatePicker
                                     value={billState.time}
                                     onChange={(time) => {
-                                        setBillState((v) => ({
-                                            ...v,
-                                            time: time,
-                                        }));
+                                        setBillState((prev) => {
+                                            if (!prev.currency) {
+                                                return {
+                                                    ...prev,
+                                                    time: time,
+                                                };
+                                            }
+                                            const { predict } = convert(
+                                                amountToNumber(
+                                                    prev.currency?.amount ??
+                                                        prev.amount,
+                                                ),
+                                                prev.currency.target,
+                                                baseCurrency.id,
+                                                time,
+                                            );
+                                            return {
+                                                ...prev,
+                                                time: time,
+                                                amount: numberToAmount(predict),
+                                                currency: {
+                                                    base: baseCurrency.id,
+                                                    target: prev.currency
+                                                        .target,
+                                                    amount:
+                                                        prev.currency?.amount ??
+                                                        prev.amount,
+                                                },
+                                            };
+                                        });
                                     }}
                                 />
                             </div>
@@ -381,7 +531,7 @@ export default function EditorForm({
 
                     <button
                         type="button"
-                        className="flex h-[80px] justify-center items-center bg-green-700 rounded-lg font-bold text-lg cursor-pointer"
+                        className="flex h-[80px] min-h-[48px] justify-center items-center bg-green-700 rounded-lg font-bold text-lg cursor-pointer"
                         onClick={toConfirm}
                     >
                         <i className="icon-[mdi--check] icon-md"></i>

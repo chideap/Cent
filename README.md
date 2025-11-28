@@ -14,12 +14,15 @@ Cent 是一个 **完全免费、开源的多人协作记账 Web App**，
 💾 **开源仓库**：[https://github.com/glink25/Cent](https://github.com/glink25/Cent)  
 📖 **博客**：[https://glink25.github.io/tag/Cent/](https://glink25.github.io/tag/Cent/)  
 
+> [Cent 1.0 正式发布 🎉](https://glink25.github.io/edit/?path=Cent-10-%E6%AD%A3%E5%BC%8F%E5%8F%91%E5%B8%83-)
+
 ---
 
 ## ✨ 特性
 
-- 💾 **数据完全自持**：账本数据保存在你的 GitHub 私人仓库中，无需任何第三方服务器。  
-- 👥 **多人协作**：通过 GitHub Collaborator 功能即可共享账本，实时同步修改。  
+- 💾 **数据完全自持**：账本数据保存在你的 GitHub/Gitee 私人仓库/Web DAV中，无需任何第三方服务器。  
+- 👥 **多人协作**：通过 GitHub/Gitee Collaborator 功能即可共享账本，实时同步修改。 
+- 🖼️ **导入导出**：自由导入和导出账单数据，摆脱数据焦虑，支持微信/支付宝账单导入
 - ⚡️ **增量同步**：只上传/下载变更数据，大幅缩短同步时间。  
 - 📊 **丰富的统计分析**：支持多维度筛选与走势分析，可自定义分析视图。  
 - 🏷️ **分类与标签系统**：支持二级分类、自定义标签、图标、排序。  
@@ -30,16 +33,18 @@ Cent 是一个 **完全免费、开源的多人协作记账 Web App**，
 
 ---
 
+>  [Cent 1.1](https://glink25.github.io/post/Cent-%E5%B7%B2%E6%94%AF%E6%8C%81%E5%A4%9A%E5%B8%81%E7%A7%8D%E8%87%AA%E5%8A%A8%E8%AE%B0%E8%B4%A6/) 正式推出，新功能包括快捷指令自动记账、多币种等。
+
 ## 🧠 核心原理
 
 Cent 是一个“纯前端”的 PWA 应用。  
-除 GitHub OAuth 登录外，Cent 不依赖任何后端服务。
+除 GitHub/Gitee OAuth 登录外，Cent 不依赖任何后端服务。
 
 了解详情：[现在开始将Github作为数据库](https://glink25.github.io/post/%E7%8E%B0%E5%9C%A8%E5%BC%80%E5%A7%8B%E5%B0%86Github%E4%BD%9C%E4%B8%BA%E6%95%B0%E6%8D%AE%E5%BA%93/)
 
 ### 🗂 数据结构
 
-- 每个账本（Book）即为一个 GitHub 仓库。
+- 每个账本（Book）即为一个 GitHub/Gitee 仓库。
 - 数据以 JSON 格式存储在仓库中，支持历史版本回滚。
 - 通过仓库名识别账本，实现多账本管理。
 
@@ -89,6 +94,9 @@ Cent 内置一套自定义的增量同步策略，仅同步增量差异：
 3. 在登录界面手动输入 GitHub Token 使用  
 4. 所有账本与数据均存储于你的 GitHub 仓库中  
 
+> 出于安全考虑，self-hosted 方式无法支持 Github/Gitee 一键登录，需要自行在Github/Gitee设置页面生成具有Repo读写权限的token，通过手动输入token功能使用。
+Cent使用Cloudflare Workers部署了一个线上鉴权服务，该服务只针对受信任的域名提供服务。如果需要快捷登录服务，可以参考这个项目[cent-github-backend](https://github.com/glink25/cent-github-backend)项目创建自己的后端服务，并自己申请对应平台的OAuth app。
+
 ---
 
 ## 🧪 开发计划
@@ -115,6 +123,9 @@ pnpm install
 
 # 本地运行
 pnpm dev
+
+# 格式校验
+pnpm lint
 ```
 
 ## 📜 许可证
@@ -127,6 +138,32 @@ pnpm dev
  - 派生作品须使用相同许可协议
 
  ---
+
+
+## ☕️ Buy Me a Coffee
+
+感谢您对本项目的支持！Cent目前仅由单人支持开发，您的捐赠将用于维护和持续开发。
+
+---
+
+### 💰 支付宝 (Alipay)
+
+
+<img src="https://glink25.github.io/post-assets/sponsor-solana.jpg" width="50%" alt="支付宝收款码">
+
+---
+
+### 🌐 Solana (SOL)
+
+**钱包地址:**
+
+`vEzM9jmxChx2AoMMDpHARHZcUjmUCHdBShwF9eJYGEg`
+
+**二维码:**
+
+<img src="https://glink25.github.io/post-assets/sponsor-alipay.jpg" width="50%" alt="solana">
+
+---
 
  # Cent
 
@@ -217,6 +254,9 @@ The synchronization logic has been abstracted and encapsulated, with future supp
 3. Manually input your GitHub Token on the login screen to use it  
 4. All ledgers and data are stored in your GitHub repositories  
 
+> For security reasons, the self-hosted method cannot support GitHub/Gitee one-click-authentication. You will need to manually generate a token with read and write permissions for the repository (Repo) on the Github/Gitee settings page, and use it through the manual token input feature.
+Cent uses Cloudflare Workers to deploy an online authentication service, which only provides services for trusted domains. If you require a quick login service, you can refer to the project [cent-github-backend](https://github.com/glink25/cent-github-backend) to create your own backend service and apply for an OAuth app on the corresponding platform yourself.
+
 ---
 
 ## 🧪 Development Plan
@@ -243,6 +283,9 @@ pnpm install
 
 # Run locally
 pnpm dev
+
+# Lint
+pnpm lint
 ```
 
 ## 📜 License

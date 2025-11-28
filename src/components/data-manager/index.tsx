@@ -1,13 +1,7 @@
-import { cloneDeep, merge } from "lodash-es";
-import {
-    type ExportedJSON,
-    type GlobalMeta,
-    StorageAPI,
-    StorageDeferredAPI,
-} from "@/api/storage";
-import type { MetaUpdate, Update } from "@/database/stash";
+import { toast } from "sonner";
+import { StorageDeferredAPI } from "@/api/storage";
 import PopupLayout from "@/layouts/popup-layout";
-import type { Bill } from "@/ledger/type";
+import type { ExportedJSON } from "@/ledger/type";
 import { useIntl } from "@/locale";
 import { useBookStore } from "@/store/book";
 import { useLedgerStore } from "@/store/ledger";
@@ -17,7 +11,14 @@ import { FORMAT_BACKUP, showFilePicker } from "../file-picker";
 import modal from "../modal";
 import { Button } from "../ui/button";
 import { showOncentImport } from "./oncent";
-import { ImportPreviewProvider, showImportPreview } from "./preview";
+import {
+    ImportPreviewProvider,
+    importFromPreviewResult,
+    showImportPreview,
+} from "./preview";
+import { SmartImportProvider, showSmartImport } from "./smart-import";
+
+const betaClassName = `relative after:content-['beta'] after:rounded after:bg-yellow-400 after:px-[2px] after:text-[8px] after:block after:absolute after:top-0 after:right-0 after:translate-x-[calc(100%+4px)]`;
 
 function Form({ onCancel }: { onCancel?: () => void }) {
     const t = useIntl();
@@ -36,57 +37,7 @@ function Form({ onCancel }: { onCancel?: () => void }) {
         if (!res) {
             return;
         }
-        const { strategy, ...rest } = res;
-        const currentMeta = cloneDeep(
-            useLedgerStore.getState().infos?.meta ?? ({} as GlobalMeta),
-        );
-        const newMeta =
-            strategy === "overlap"
-                ? rest.meta
-                : (() => {
-                      // 相同名称或者id的category将合并为同一个
-                      const curm = currentMeta;
-                      const newCategories = [...(currentMeta.categories ?? [])];
-                      curm.categories = undefined;
-                      const newm = { ...rest.meta };
-                      const merged = merge(curm, newm);
-                      if (!rest.meta?.categories) {
-                          merged.categories = currentMeta.categories;
-                          return merged;
-                      }
-                      rest.meta.categories.forEach((c) => {
-                          const sameIdIndex = newCategories?.findIndex(
-                              (x) => x.id === c.id,
-                          );
-                          if (sameIdIndex !== -1) {
-                              const old = newCategories[sameIdIndex];
-                              newCategories[sameIdIndex] = { ...c };
-                              newCategories[sameIdIndex].id = old.id;
-                          } else {
-                              newCategories.push(c);
-                          }
-                      });
-                      merged.categories = newCategories;
-                      return merged;
-                  })();
-        await StorageAPI.batch(
-            bookid,
-            [
-                ...rest.bills.map((v) => {
-                    return {
-                        id: v.id,
-                        type: "update",
-                        value: { ...v },
-                        timestamp: v.__update_at,
-                    } as Update<Bill>;
-                }),
-                {
-                    type: "meta",
-                    metaValue: newMeta,
-                } as MetaUpdate,
-            ],
-            strategy === "overlap",
-        );
+        await importFromPreviewResult(res);
     };
 
     const toExport = async () => {
@@ -111,13 +62,28 @@ function Form({ onCancel }: { onCancel?: () => void }) {
         const data = JSON.parse(jsonText);
         await showOncentImport(data);
     };
+
+    const toShrinkData = async () => {
+        const ok = confirm(t("bill-compression-tip"));
+        if (!ok) {
+            return;
+        }
+        const isSynced = useLedgerStore.getState().sync === "success";
+        if (!isSynced) {
+            toast.warning(t("wait-synced-tip"));
+            return;
+        }
+        const bills = await useLedgerStore.getState().refreshBillList();
+        const meta = useLedgerStore.getState().infos?.meta;
+        await importFromPreviewResult({
+            bills,
+            meta,
+            strategy: "overlap",
+        });
+    };
     return (
         <PopupLayout
-            title={
-                <div className="relative after:content-['beta'] after:rounded after:bg-yellow-400 after:px-[2px] after:text-[8px] after:block after:absolute after:top-0 after:right-0 after:translate-x-[calc(100%+4px)]">
-                    {t("data-manager")}
-                </div>
-            }
+            title={<div className="">{t("data-manager")}</div>}
             onBack={onCancel}
             className="h-full overflow-hidden"
         >
@@ -150,9 +116,28 @@ function Form({ onCancel }: { onCancel?: () => void }) {
                             {t("import-from-oncent-github-io")}
                         </Button>
                     </div>
+                    <div className="flex flex-col px-4 gap-2">
+                        <Button
+                            variant="outline"
+                            className="py-4"
+                            onClick={showSmartImport}
+                        >
+                            {t("smart-import")}
+                        </Button>
+                    </div>
+                    <div className="flex flex-col px-4 gap-2">
+                        <Button
+                            variant="outline"
+                            className="py-4"
+                            onClick={toShrinkData}
+                        >
+                            {t("bill-compression")}
+                        </Button>
+                    </div>
                 </div>
             </div>
             <ImportPreviewProvider />
+            <SmartImportProvider />
         </PopupLayout>
     );
 }
@@ -178,9 +163,7 @@ export default function DataManagerSettingsItem() {
                 <div className="w-full px-4 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <i className="icon-[mdi--database-outline] size-5"></i>
-                        <div className="relative after:content-['beta'] after:rounded after:bg-yellow-400 after:px-[2px] after:text-[8px] after:block after:absolute after:top-0 after:right-0 after:translate-x-[calc(100%+4px)]">
-                            {t("data-manager")}
-                        </div>
+                        <div>{t("data-manager")}</div>
                     </div>
                     <i className="icon-[mdi--chevron-right] size-5"></i>
                 </div>

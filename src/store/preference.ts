@@ -10,6 +10,13 @@ type State = {
     locale: LocaleName;
     autoLocateWhenAddBill?: boolean;
     enterAddBillWhenReduceMotionChanged?: boolean;
+    readClipboardWhenReduceMotionChanged?: boolean;
+    /** @deprecated */
+    quickEntryWithReLayr?: boolean;
+    /** @deprecated */
+    reLayrPort?: string;
+    /** @deprecated */
+    reLayrKey?: string;
 };
 type Store = State;
 
@@ -24,6 +31,9 @@ export const usePreferenceStore = create<Store>()(
             return {
                 locale: getBrowserLang(),
                 autoLocateWhenAddBill: false,
+                readClipboardWhenReduceMotionChanged: false,
+                reLayrKey: "cent",
+                reLayrPort: "2525",
             };
         },
         {

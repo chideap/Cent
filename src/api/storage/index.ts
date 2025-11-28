@@ -1,40 +1,25 @@
 import { wrap } from "comlink";
-import type { BillTag } from "@/components/bill-tag/type";
-import type { Budget } from "@/components/budget/type";
-import type { Full } from "@/database/stash";
-import type { Bill, BillCategory, BillFilter } from "@/ledger/type";
+import modal from "@/components/modal";
 import { EmptyEndpoint } from "../endpoints/empty";
+import { GiteeEndpoint } from "../endpoints/gitee";
 import { GithubEndpoint } from "../endpoints/github";
 import { OfflineEndpoint } from "../endpoints/offline";
+import { WebDAVEndpoint } from "../endpoints/web-dav";
 import type { Exposed } from "./worker";
 import DeferredWorker from "./worker?worker";
 
-export type PersonalMeta = {
-    names?: Record<string, string>;
-};
-
-export type GlobalMeta = {
-    customFilters?: { id: string; filter: BillFilter; name: string }[];
-    budgets?: Budget[];
-    categories?: BillCategory[];
-    tags: BillTag[];
-    personal?: Record<string, PersonalMeta>;
-};
-
-export type ExportedJSON = {
-    items: Full<Bill>[];
-    meta: GlobalMeta;
+const APIS = {
+    github: GithubEndpoint,
+    offline: OfflineEndpoint,
+    webdav: WebDAVEndpoint,
+    gitee: GiteeEndpoint,
 };
 
 const SYNC_ENDPOINT_KEY = "SYNC_ENDPOINT";
-const type = localStorage.getItem(SYNC_ENDPOINT_KEY) ?? "github";
+const type = (localStorage.getItem(SYNC_ENDPOINT_KEY) ??
+    "github") as keyof typeof APIS;
 
-const _StorageAPI =
-    type === "github"
-        ? GithubEndpoint
-        : type === "offline"
-          ? OfflineEndpoint
-          : EmptyEndpoint;
+const _StorageAPI = APIS[type] ?? EmptyEndpoint;
 const actions = _StorageAPI.init();
 
 export const StorageAPI = {
@@ -43,15 +28,24 @@ export const StorageAPI = {
     ...actions,
     loginWith: (type: string) => {
         if (type === "github") {
-            return GithubEndpoint.login();
+            return GithubEndpoint.login({ modal });
+        }
+        if (type === "gitee") {
+            return GiteeEndpoint.login({ modal });
         }
         if (type === "offline") {
-            return OfflineEndpoint.login();
+            return OfflineEndpoint.login({ modal });
+        }
+        if (type === "webdav") {
+            return WebDAVEndpoint.login({ modal });
         }
     },
     loginManuallyWith: (type: string) => {
         if (type === "github") {
             return GithubEndpoint.manuallyLogin?.();
+        }
+        if (type === "gitee") {
+            return GiteeEndpoint.manuallyLogin?.();
         }
     },
 };

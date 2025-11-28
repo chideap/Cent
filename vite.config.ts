@@ -1,18 +1,18 @@
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
+import Info from "unplugin-info/vite";
 import { defineConfig, type PluginOption } from "vite";
 import { analyzer } from "vite-bundle-analyzer";
 import { VitePWA } from "vite-plugin-pwa";
-
-const packageJSON = readFileSync("./package.json", { encoding: "utf-8" });
-const packageValue = JSON.parse(packageJSON);
+import svgr from "vite-plugin-svgr";
 
 const shouldAnalyze = process.env.ANALYZE === "true";
 
 const plugins: PluginOption[] = [
+    Info(),
     react(),
+    svgr(),
     tailwindcss(),
     VitePWA({
         strategies: "injectManifest",
@@ -30,6 +30,13 @@ const plugins: PluginOption[] = [
                 { src: "icon.png", sizes: "192x192", type: "image/png" },
                 { src: "icon.png", sizes: "512x512", type: "image/png" },
             ],
+            protocol_handlers: [
+                {
+                    protocol: "cent-accounting",
+                    url: "/add?data=%s",
+                    client_mode: "focus-existing", // 优先聚焦现有窗口
+                } as any,
+            ],
         },
     }),
 ];
@@ -41,9 +48,6 @@ if (shouldAnalyze) {
 
 // https://vite.dev/config/
 export default defineConfig({
-    define: {
-        __BUILD_INFO: { version: `${packageValue.version}` },
-    },
     plugins,
     resolve: {
         alias: {

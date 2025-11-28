@@ -2,11 +2,14 @@ import dayjs from "dayjs";
 import { useMemo, useRef } from "react";
 import { useShallow } from "zustand/shallow";
 import { StorageAPI } from "@/api/storage";
+import CloudLoopIcon from "@/assets/icons/cloud-loop.svg?react";
 import AnimatedNumber from "@/components/animated-number";
 import BudgetCard from "@/components/budget/card";
+import { HintTooltip } from "@/components/hint";
 import { PaginationIndicator } from "@/components/indicator";
 import Ledger from "@/components/ledger";
 import Loading from "@/components/loading";
+import { Promotion } from "@/components/promotion";
 import { useBudget } from "@/hooks/use-budget";
 import { useSnap } from "@/hooks/use-snap";
 import { amountToNumber } from "@/ledger/bill";
@@ -28,7 +31,7 @@ export default function Page() {
         }),
     );
     const { id: userId } = useUserStore();
-    const syncIcon =
+    const syncIconClassName =
         sync === "wait"
             ? "icon-[mdi--cloud-minus-outline]"
             : sync === "syncing"
@@ -87,6 +90,7 @@ export default function Page() {
                         </button>
                     )}
                 </div>
+                <Promotion />
                 <div className="w-full flex flex-col gap-1">
                     <div
                         ref={budgetContainer}
@@ -104,7 +108,7 @@ export default function Page() {
                     </div>
                 </div>
             </div>
-            <div className="flex justify-between items-center pl-7 pr-5 py-1">
+            <div className="flex justify-between items-center pl-7 pr-5 py-1 h-8">
                 <button
                     className="cursor-pointer"
                     type="button"
@@ -127,15 +131,24 @@ export default function Page() {
                         />
                     )}
                 </div>
-                <button
-                    type="button"
-                    className="cursor-pointer"
-                    onClick={() => {
-                        StorageAPI.toSync();
-                    }}
+                <HintTooltip
+                    persistKey={"cloudSyncHintShows"}
+                    content={"等待云同步完成后，其他设备即可获取最新的账单数据"}
                 >
-                    <i className={cn(syncIcon)} />
-                </button>
+                    <button
+                        type="button"
+                        className="cursor-pointer"
+                        onClick={() => {
+                            StorageAPI.toSync();
+                        }}
+                    >
+                        {sync === "syncing" ? (
+                            <CloudLoopIcon width={16} height={16} />
+                        ) : (
+                            <i className={syncIconClassName}></i>
+                        )}
+                    </button>
+                </HintTooltip>
             </div>
             <div className="flex-1 translate-0 pb-[10px] overflow-hidden">
                 <div className="w-full h-full">

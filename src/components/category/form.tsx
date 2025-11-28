@@ -42,11 +42,7 @@ export const createFormSchema = (t: any) =>
         parent: z.optional(z.string()),
     });
 
-const allIcons = Array.from(Object.entries(ICONS)).map(([key, value]) => ({
-    label: key,
-    list: value,
-}));
-
+const allIcons = ICONS;
 const validSvgText = (text: string) =>
     text.startsWith("<svg") && text.endsWith("</svg>");
 
@@ -64,10 +60,9 @@ export default function CategoryEditForm({
         if (edit === undefined || edit.id === undefined) {
             return {
                 name: "",
-                customName: true,
                 type: edit?.type ?? "expense",
                 color: "#fff",
-                icon: ICONS["Finance"][0].className,
+                icon: ICONS[0].icons[0].className,
                 ...edit,
             };
         }
@@ -113,18 +108,12 @@ export default function CategoryEditForm({
         }
         const originCate = {
             icon: edit.icon,
-            name: edit.customName ? edit.name : t(edit.name),
+            name: edit.name,
             parent: edit.parent,
         };
         const formattedData = {
             ...data,
             icon: category?.icon,
-            customName:
-                edit.customName === true
-                    ? true
-                    : originCate.name !== data.name
-                      ? true
-                      : undefined,
         };
         if (
             originCate.icon === formattedData.icon &&
@@ -226,7 +215,6 @@ export default function CategoryEditForm({
                                     field.value === null
                                         ? NO_PARENT
                                         : field.value;
-                                console.log(selectValue, "ssss");
                                 return (
                                     <FormItem>
                                         <FormLabel>
@@ -318,20 +306,22 @@ export default function CategoryEditForm({
                         >
                             {allIcons.map((iconSet) => (
                                 <div
-                                    key={iconSet.label}
+                                    key={iconSet.labelKey}
                                     className="flex flex-col gap-2"
                                 >
                                     <div className="text-sm">
-                                        {iconSet.label}
+                                        {t(iconSet.labelKey)}
                                     </div>
                                     <div
                                         className={
                                             "grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] gap-2"
                                         }
                                     >
-                                        {iconSet.list.map((icon) => (
+                                        {iconSet.icons.map((icon) => (
                                             <button
-                                                key={icon.name}
+                                                key={
+                                                    iconSet.labelKey + icon.name
+                                                }
                                                 type="button"
                                                 onClick={() => {
                                                     setCategory(
@@ -366,6 +356,7 @@ export default function CategoryEditForm({
                                 </div>
                                 <textarea
                                     className="w-full flex-1 border rounded-lg p-2"
+                                    placeholder={`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>`}
                                     onChange={(e) => {
                                         const svgText = e.currentTarget.value;
                                         if (
