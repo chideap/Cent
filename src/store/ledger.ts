@@ -81,7 +81,8 @@ export const useLedgerStore = create<LedgerStore>()((set, get) => {
         const { StorageAPI, StorageDeferredAPI } = await loadStorageAPI();
         const repo = getCurrentFullRepoName();
         const [bills] = await Promise.all([
-            (limit
+            // 贪婪更新账单数据
+            (limit && limit >= get().bills.length
                 ? StorageDeferredAPI.truncate(repo, limit)
                 : StorageDeferredAPI.filter(repo, {})
             ).then((bills) => {
@@ -138,6 +139,7 @@ export const useLedgerStore = create<LedgerStore>()((set, get) => {
             if (!currentBookId) {
                 return;
             }
+            await updateBillList(MIN_SIZE);
             await StorageAPI.initBook(currentBookId);
             // 初始化时先加载100条，后续按需加载全部
             await updateBillList(MIN_SIZE);
@@ -202,6 +204,7 @@ export const useLedgerStore = create<LedgerStore>()((set, get) => {
 
     loadStorageAPI().then(({ StorageAPI }) => {
         StorageAPI.onChange(() => {
+            updateBillList(MIN_SIZE);
             StorageAPI.getIsNeedSync().then((needSync) => {
                 if (needSync) {
                     set(
@@ -316,7 +319,6 @@ export const useLedgerStore = create<LedgerStore>()((set, get) => {
                     metaValue: newMeta,
                 },
             ]);
-            await updateBillList();
         },
         updatePersonalMeta: async (v) => {
             const { StorageAPI } = await loadStorageAPI();
@@ -338,7 +340,6 @@ export const useLedgerStore = create<LedgerStore>()((set, get) => {
                     metaValue: newMeta,
                 },
             ]);
-            await updateBillList();
         },
 
         batchImportFromBills: async (
