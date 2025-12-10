@@ -7,16 +7,16 @@ import { decode, encode } from "js-base64";
 import { sortBy } from "lodash-es";
 import type { Octokit } from "octokit";
 import type { ChangeListener, UserInfo } from "@/api/endpoints/type";
-import { transformAssets } from "../database/assets";
-import { shortId } from "../database/id";
-import { Scheduler } from "../database/scheduler";
-import { asyncSingleton } from "../database/singleton";
+import { transformAssets } from "@/database/assets";
+import { shortId } from "@/database/id";
+import { Scheduler } from "@/database/scheduler";
+import { asyncSingleton } from "@/database/singleton";
 import {
     type Action,
     type BaseItem,
     StashBucket,
     type StashStorage,
-} from "../database/stash";
+} from "@/database/stash";
 
 const loadOctokit = () => import("octokit").then((v) => v.Octokit);
 
@@ -203,11 +203,11 @@ export class Gitray<Item extends BaseItem> {
             .split("/");
         const { accessToken } = await this.config.auth();
         const res = await fetch(
-            `/repos/${owner}/${repo}/contents/${paths.join("/")}`,
+            `https://api.github.com/repos/${owner}/${repo}/contents/${paths.join("/")}`,
             {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
-                    Accept: "application/vnd.github+json",
+                    Accept: "application/vnd.github.v3.raw",
                     "X-GitHub-Api-Version": "2022-11-28",
                 },
             },
